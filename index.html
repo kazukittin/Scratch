@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>My Start Page</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 上部固定バー -->
+  <header class="top-bar">
+    <div class="clock" id="clock"></div>
+
+    <div class="search-bar">
+      <form action="https://www.google.com/search" method="get" target="_blank">
+        <input type="text" name="q" placeholder="Search...">
+        <button type="submit">G</button>
+      </form>
+      <div id="quote-text" class="quote-under-search">Loading...</div>
+    </div>
+
+    <!-- 天気をクリックするとYahoo天気に飛ぶ -->
+    <a href="https://weather.yahoo.co.jp/weather/jp/13/4410/13120.html" 
+      target="_blank" 
+      id="today-weather" 
+      class="weather-now">
+      Loading...
+    </a>
+  </header>
+
+  <!-- メイン -->
+  <main class="main">
+
+    <!-- 左カラム -->
+    <div class="left-column">
+      <section class="card">
+        <div class="category-header-main">
+          <div>
+            <button id="toggle-category-form">＋ジャンル追加</button>
+            <button id="toggle-edit">編集モード切替</button>
+          </div>
+        </div>
+
+        <div id="category-form" style="display:none;" class="bookmark-form">
+          <input type="text" id="category-name" placeholder="ジャンル名">
+          <button id="save-category">保存</button>
+          <button id="cancel-category" class="cancel">キャンセル</button>
+        </div>
+
+        <div id="category-list"></div>
+      </section>
+    </div>
+
+    <!-- 右カラム -->
+    <div class="right-column">
+      <!-- 月カレンダーカード -->
+      <section class="card calendar-agenda" aria-label="Calendar and Agenda">
+        <div class="calendar-agenda-wrapper">
+
+          <!-- Googleカレンダーを開くボタン -->
+          <div class="calendar-header">
+            <button class="calendar-btn" onclick="window.open('https://calendar.google.com/calendar/u/0/r','_blank')">
+              📅 Googleカレンダーを開く
+            </button>
+          </div>
+
+          <!-- 月カレンダー（埋め込み） -->
+<iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=UTC&showPrint=0&showTz=0&showCalendars=0&showTabs=0&showTitle=0&src=a2F6dXRha3U4NDkyQGdtYWlsLmNvbQ&src=amEuamFwYW5lc2UjaG9saWRheUBncm91cC52LmNhbGVuZGFyLmdvb2dsZS5jb20&color=%23039be5&color=%230b8043"
+            style="border:solid 1px #777" 
+            width="100%" 
+            height="400" 
+            frameborder="0" 
+            scrolling="no">
+          </iframe>
+
+          <!-- アジェンダ（そのまま埋め込み） -->
+	<iframe 
+src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=UTC&showPrint=0&showTz=0&showCalendars=0&showTabs=0&showTitle=0&mode=AGENDA&src=a2F6dXRha3U4NDkyQGdtYWlsLmNvbQ&src=amEuamFwYW5lc2UjaG9saWRheUBncm91cC52LmNhbGVuZGFyLmdvb2dsZS5jb20&color=%23039be5&color=%230b8043" 
+            style="border:solid 1px #777" 
+            width="100%" 
+            height="300" 
+            frameborder="0" 
+            scrolling="no">
+          </iframe>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
