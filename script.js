@@ -1,25 +1,11 @@
-// ---- 背景ランダム画像 ----
-async function setRandomBackground() {
-  const accessKey = "77MSHHGMubOavwsIjvZ2lO9AKWUo9e_kapEg1pSQPyI";
-  const url = `https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=${accessKey}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    document.body.style.backgroundImage = `url(${data.urls.full})`;
-  } catch {
-    document.body.style.background = "#222";
-  }
-}
-setRandomBackground();
-
 // ---- 時計 ----
 function updateClock() {
   const now = new Date();
-  const days = ["日","月","火","水","木","金","土"];
+  const days = ["日", "月", "火", "水", "木", "金", "土"];
   document.getElementById("clock").textContent =
-    `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}(${days[now.getDay()]}) ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+    `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}(${days[now.getDay()]}) ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 }
-setInterval(updateClock,1000);
+setInterval(updateClock, 1000);
 updateClock();
 
 // ---- 名言（日替わり） ----
@@ -72,26 +58,26 @@ function showDailyQuote() {
 showDailyQuote();
 
 // ---- 天気 ----
-function weatherDescription(code){return {0:"快晴",1:"ほぼ快晴",2:"晴れ時々曇り",3:"曇り",45:"霧",48:"濃い霧",51:"小雨",61:"雨",71:"雪",95:"雷雨"}[code]||"不明";}
-function weatherIcon(code){return {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",61:"🌧️",71:"❄️",95:"⛈️"}[code]||"❓";}
-async function loadWeather(){
-  try{
-    const res=await fetch("https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current=temperature_2m,weathercode&timezone=Asia%2FTokyo");
-    const d=await res.json();
-    document.getElementById("today-weather").innerHTML=`${weatherIcon(d.current.weathercode)} 東京 ${d.current.temperature_2m.toFixed(1)}℃ ${weatherDescription(d.current.weathercode)}`;
-  }catch{document.getElementById("today-weather").textContent="天気取得失敗";}
+function weatherDescription(code) { return { 0: "快晴", 1: "ほぼ快晴", 2: "晴れ時々曇り", 3: "曇り", 45: "霧", 48: "濃い霧", 51: "小雨", 61: "雨", 71: "雪", 95: "雷雨" }[code] || "不明"; }
+function weatherIcon(code) { return { 0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️", 45: "🌫️", 48: "🌫️", 51: "🌦️", 61: "🌧️", 71: "❄️", 95: "⛈️" }[code] || "❓"; }
+async function loadWeather() {
+  try {
+    const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current=temperature_2m,weathercode&timezone=Asia%2FTokyo");
+    const d = await res.json();
+    document.getElementById("today-weather").innerHTML = `${weatherIcon(d.current.weathercode)} 東京 ${d.current.temperature_2m.toFixed(1)}℃ ${weatherDescription(d.current.weathercode)}`;
+  } catch { document.getElementById("today-weather").textContent = "天気取得失敗"; }
 }
 loadWeather();
 
 // ---- データ管理 ----
-function getData(){return JSON.parse(localStorage.getItem("categories")||"[]");}
-function saveData(data){localStorage.setItem("categories",JSON.stringify(data));}
+function getData() { return JSON.parse(localStorage.getItem("categories") || "[]"); }
+function saveData(data) { localStorage.setItem("categories", JSON.stringify(data)); }
 
 // ---- カテゴリ描画 ----
-function loadCategories(){
-  const container=document.getElementById("category-list");
-  container.innerHTML="";
-  let categories=getData();
+function loadCategories() {
+  const container = document.getElementById("category-list");
+  container.innerHTML = "";
+  let categories = getData();
 
   // 古いデータ互換
   categories = categories.map(cat => {
@@ -101,33 +87,33 @@ function loadCategories(){
   });
   saveData(categories);
 
-  categories.forEach((cat,catIndex)=>{
-    const card=document.createElement("div");
-    card.className="category-card";
+  categories.forEach((cat, catIndex) => {
+    const card = document.createElement("div");
+    card.className = "category-card";
 
     // ヘッダー
-    const header=document.createElement("div");
-    header.className="category-header";
+    const header = document.createElement("div");
+    header.className = "category-header";
 
-    const title=document.createElement("h3");
-    title.textContent=cat.name;
+    const title = document.createElement("h3");
+    title.textContent = cat.name;
 
-    const btns=document.createElement("div");
+    const btns = document.createElement("div");
 
-    const editBtn=document.createElement("button");
-    editBtn.textContent="✎";
-    editBtn.className="edit-btn";
-    editBtn.onclick=()=>{
-      const newName=prompt("ジャンル名を編集",cat.name);
-      if(newName){categories[catIndex].name=newName;saveData(categories);loadCategories();}
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✎";
+    editBtn.className = "edit-btn";
+    editBtn.onclick = () => {
+      const newName = prompt("ジャンル名を編集", cat.name);
+      if (newName) { categories[catIndex].name = newName; saveData(categories); loadCategories(); }
     };
 
-    const delBtn=document.createElement("button");
-    delBtn.textContent="✖";
-    delBtn.className="delete-btn";
-    delBtn.onclick=()=>{
-      if(confirm("本当に削除しますか？")){
-        categories.splice(catIndex,1);
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "✖";
+    delBtn.className = "delete-btn";
+    delBtn.onclick = () => {
+      if (confirm("本当に削除しますか？")) {
+        categories.splice(catIndex, 1);
         saveData(categories);
         loadCategories();
       }
@@ -140,23 +126,23 @@ function loadCategories(){
     card.appendChild(header);
 
     // アイテムリスト
-    const itemList=document.createElement("div");
-    itemList.className="item-list";
-    cat.items.forEach((it,itIndex)=>{
-      const item=document.createElement("div");
-      item.className="item";
+    const itemList = document.createElement("div");
+    itemList.className = "item-list";
+    cat.items.forEach((it, itIndex) => {
+      const item = document.createElement("div");
+      item.className = "item";
 
-      const link=document.createElement("a");
-      link.href=it.url;
-      link.target="_blank";
-      link.textContent=it.title;
+      const link = document.createElement("a");
+      link.href = it.url;
+      link.target = "_blank";
+      link.textContent = it.title;
 
-      const del=document.createElement("button");
-      del.textContent="✖";
-      del.className="delete-btn";
-      del.onclick=()=>{
-        if(confirm("このアイテムを削除しますか？")){
-          categories[catIndex].items.splice(itIndex,1);
+      const del = document.createElement("button");
+      del.textContent = "✖";
+      del.className = "delete-btn";
+      del.onclick = () => {
+        if (confirm("このアイテムを削除しますか？")) {
+          categories[catIndex].items.splice(itIndex, 1);
           saveData(categories);
           loadCategories();
         }
@@ -169,40 +155,40 @@ function loadCategories(){
     card.appendChild(itemList);
 
     // アイテム追加フォーム
-    const form=document.createElement("div");
-    form.className="bookmark-form";
-    form.style.display="none";
+    const form = document.createElement("div");
+    form.className = "bookmark-form";
+    form.style.display = "none";
 
-    const titleInput=document.createElement("input");
-    titleInput.placeholder="タイトル";
+    const titleInput = document.createElement("input");
+    titleInput.placeholder = "タイトル";
 
-    const urlInput=document.createElement("input");
-    urlInput.placeholder="URL";
-    urlInput.type="url";
+    const urlInput = document.createElement("input");
+    urlInput.placeholder = "URL";
+    urlInput.type = "url";
 
-    const saveBtn=document.createElement("button");
-    saveBtn.textContent="保存";
-    saveBtn.onclick=()=>{
-      if(!titleInput.value||!urlInput.value)return;
-      categories[catIndex].items.push({title:titleInput.value,url:urlInput.value});
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "保存";
+    saveBtn.onclick = () => {
+      if (!titleInput.value || !urlInput.value) return;
+      categories[catIndex].items.push({ title: titleInput.value, url: urlInput.value });
       saveData(categories);
       loadCategories();
     };
 
-    const cancelBtn=document.createElement("button");
-    cancelBtn.textContent="キャンセル";
-    cancelBtn.className="cancel";
-    cancelBtn.onclick=()=>{form.style.display="none";};
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "キャンセル";
+    cancelBtn.className = "cancel";
+    cancelBtn.onclick = () => { form.style.display = "none"; };
 
     form.appendChild(titleInput);
     form.appendChild(urlInput);
     form.appendChild(saveBtn);
     form.appendChild(cancelBtn);
 
-    const addItemBtn=document.createElement("button");
-    addItemBtn.textContent="＋アイテム追加";
-    addItemBtn.className="add-item-btn"; // ← 編集モードでだけ表示される用のクラス
-    addItemBtn.onclick=()=>{form.style.display="flex";};
+    const addItemBtn = document.createElement("button");
+    addItemBtn.textContent = "＋アイテム追加";
+    addItemBtn.className = "add-item-btn"; // ← 編集モードでだけ表示される用のクラス
+    addItemBtn.onclick = () => { form.style.display = "flex"; };
 
     card.appendChild(addItemBtn);
     card.appendChild(form);
@@ -212,26 +198,26 @@ function loadCategories(){
 }
 
 // ---- ジャンル追加フォーム ----
-document.getElementById("toggle-category-form").addEventListener("click",()=>{
-  document.getElementById("category-form").style.display="flex";
+document.getElementById("toggle-category-form").addEventListener("click", () => {
+  document.getElementById("category-form").style.display = "flex";
 });
-document.getElementById("cancel-category").addEventListener("click",()=>{
-  document.getElementById("category-form").style.display="none";
-  document.getElementById("category-name").value="";
+document.getElementById("cancel-category").addEventListener("click", () => {
+  document.getElementById("category-form").style.display = "none";
+  document.getElementById("category-name").value = "";
 });
-document.getElementById("save-category").addEventListener("click",()=>{
-  const name=document.getElementById("category-name").value.trim();
-  if(!name)return;
-  const categories=getData();
-  categories.push({name,items:[]});
+document.getElementById("save-category").addEventListener("click", () => {
+  const name = document.getElementById("category-name").value.trim();
+  if (!name) return;
+  const categories = getData();
+  categories.push({ name, items: [] });
   saveData(categories);
-  document.getElementById("category-name").value="";
-  document.getElementById("category-form").style.display="none";
+  document.getElementById("category-name").value = "";
+  document.getElementById("category-form").style.display = "none";
   loadCategories();
 });
 
 // ---- 編集モード切替 ----
-document.getElementById("toggle-edit").addEventListener("click",()=>{
+document.getElementById("toggle-edit").addEventListener("click", () => {
   document.body.classList.toggle("edit-mode");
 });
 
