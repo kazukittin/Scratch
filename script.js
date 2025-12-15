@@ -116,10 +116,10 @@ loadWeeklyWeather();
 async function loadNewsFeed() {
   const container = document.getElementById("news-feed");
 
-  // 複数のRSSソースを試す
+  // 複数のRSSソースを試す（Google Newsを優先）
   const rssSources = [
+    { url: "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja", name: "Google" },
     { url: "https://www3.nhk.or.jp/rss/news/cat0.xml", name: "NHK" },
-    { url: "https://www.asahi.com/rss/asahi/newsheadlines.rdf", name: "朝日新聞" },
     { url: "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml", name: "ITmedia" }
   ];
 
@@ -536,7 +536,22 @@ document.getElementById("open-settings").addEventListener("click", () => {
   document.getElementById("bg-url-input").value = settings.bgUrl;
   document.getElementById("lat-input").value = settings.lat;
   document.getElementById("lon-input").value = settings.lon;
+
+  // カレンダーログアウトセクションの表示/非表示
+  const logoutSection = document.getElementById("calendar-logout-section");
+  if (logoutSection) {
+    logoutSection.style.display = calendarState && calendarState.isLoggedIn ? "block" : "none";
+  }
+
   modal.style.display = "flex";
+});
+
+// カレンダーログアウトボタン
+document.getElementById("calendar-logout-btn")?.addEventListener("click", () => {
+  if (typeof handleCalendarLogout === 'function') {
+    handleCalendarLogout();
+    document.getElementById("calendar-logout-section").style.display = "none";
+  }
 });
 
 document.getElementById("close-settings").addEventListener("click", () => {
@@ -724,29 +739,37 @@ async function refreshAccessToken() {
 // ログインボタンクリック
 function handleLoginClick() {
   if (calendarState.isLoggedIn) {
-    // ログアウト
-    calendarState.isLoggedIn = false;
-    calendarState.accessToken = null;
-    calendarState.refreshToken = null;
-    calendarState.events = [];
-    localStorage.removeItem('calendarTokens');
-    updateLoginButton();
-    renderCalendar();
-    renderAgenda();
+    // ログイン中はGoogleカレンダーを開く
+    window.open('https://calendar.google.com', '_blank');
   } else {
     // ログイン - Workerにリダイレクト
     window.location.href = `${OAUTH_WORKER_URL}/auth`;
   }
 }
 
+// ログアウト（設定画面から呼び出し）
+function handleCalendarLogout() {
+  calendarState.isLoggedIn = false;
+  calendarState.accessToken = null;
+  calendarState.refreshToken = null;
+  calendarState.events = [];
+  localStorage.removeItem('calendarTokens');
+  updateLoginButton();
+  renderCalendar();
+  renderAgenda();
+  alert('Googleカレンダーからログアウトしました');
+}
+
 // ログインボタン更新
 function updateLoginButton() {
   if (calendarState.isLoggedIn) {
     calendarElements.loginBtn.classList.add('logged-in');
-    calendarElements.loginText.textContent = 'ログイン中';
+    calendarElements.loginText.textContent = 'Googleカレンダー';
+    calendarElements.loginBtn.title = 'Googleカレンダーを開く';
   } else {
     calendarElements.loginBtn.classList.remove('logged-in');
     calendarElements.loginText.textContent = 'Googleでログイン';
+    calendarElements.loginBtn.title = '';
   }
 }
 
