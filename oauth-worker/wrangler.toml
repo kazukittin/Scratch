@@ -1,0 +1,6 @@
+name = "calendar-oauth"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+FRONTEND_URL = "https://kazukittin.github.io/My_HomePage"

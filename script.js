@@ -550,8 +550,11 @@ applySettings();
 loadCategories();
 
 // =====================================================
-// カスタムカレンダー with Google Calendar API
+// カスタムカレンダー with Google Calendar API (Worker版)
 // =====================================================
+
+// Cloudflare Worker URL
+const OAUTH_WORKER_URL = 'https://calendar-oauth.kazukittin.workers.dev';
 
 // カレンダー状態
 const calendarState = {
@@ -560,7 +563,8 @@ const calendarState = {
   events: [],
   weeklyWeatherData: null,
   isLoggedIn: false,
-  accessToken: null
+  accessToken: null,
+  refreshToken: null
 };
 
 // DOM要素
@@ -588,83 +592,139 @@ const calendarElements = {
   clientIdInput: document.getElementById('client-id-input')
 };
 
-// Google OAuth設定
-const SCOPES = 'https://www.googleapis.com/auth/calendar';
-let tokenClient = null;
-
 // 初期化
 function initCalendar() {
   renderCalendar();
   setupCalendarEventListeners();
   loadWeatherForCalendar();
-  
-  // Google Identity Services の初期化を待つ
-  if (typeof google !== 'undefined' && google.accounts) {
-    initGoogleAuth();
-  } else {
-    // GIS ライブラリが読み込まれたら初期化
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        if (typeof google !== 'undefined' && google.accounts) {
-          initGoogleAuth();
-        }
-      }, 500);
-    });
+
+  // URLフラグメントからトークンを取得（OAuthコールバック後）
+  handleOAuthCallback();
+
+  // 保存されたトークンを復元
+  restoreSavedToken();
+}
+
+// OAuthコールバック処理（Worker経由でリダイレクトされた後）
+function handleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash || !hash.includes('access_token')) return;
+
+  const params = new URLSearchParams(hash.substring(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  const expiresIn = parseInt(params.get('expires_in')) || 3600;
+
+  if (accessToken) {
+    calendarState.accessToken = accessToken;
+    calendarState.refreshToken = refreshToken;
+    calendarState.isLoggedIn = true;
+
+    // トークンを保存
+    const tokenData = {
+      accessToken,
+      refreshToken,
+      expires: Date.now() + expiresIn * 1000
+    };
+    localStorage.setItem('calendarTokens', JSON.stringify(tokenData));
+
+    updateLoginButton();
+    fetchCalendarEvents();
+
+    // URLからハッシュを削除
+    history.replaceState(null, '', window.location.pathname);
   }
 }
 
-// Google認証初期化
-function initGoogleAuth() {
-  const settings = getSettings();
-  if (!settings.clientId) {
-    console.log('Client ID not set');
-    return;
-  }
-  
+// 保存されたトークンを復元
+async function restoreSavedToken() {
+  const savedData = localStorage.getItem('calendarTokens');
+  if (!savedData) return;
+
   try {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: settings.clientId,
-      scope: SCOPES,
-      callback: (response) => {
-        if (response.access_token) {
-          calendarState.accessToken = response.access_token;
-          calendarState.isLoggedIn = true;
-          updateLoginButton();
-          fetchCalendarEvents();
-        }
-      },
-    });
+    const { accessToken, refreshToken, expires } = JSON.parse(savedData);
+
+    if (!refreshToken) {
+      localStorage.removeItem('calendarTokens');
+      return;
+    }
+
+    calendarState.refreshToken = refreshToken;
+
+    // アクセストークンが期限切れの場合はリフレッシュ
+    if (Date.now() > expires) {
+      console.log('Access token expired, refreshing...');
+      await refreshAccessToken();
+    } else {
+      calendarState.accessToken = accessToken;
+      calendarState.isLoggedIn = true;
+      updateLoginButton();
+      fetchCalendarEvents();
+    }
   } catch (e) {
-    console.error('Google Auth init error:', e);
+    console.error('Token restore error:', e);
+    localStorage.removeItem('calendarTokens');
+  }
+}
+
+// アクセストークンをリフレッシュ
+async function refreshAccessToken() {
+  if (!calendarState.refreshToken) return false;
+
+  try {
+    const response = await fetch(`${OAUTH_WORKER_URL}/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: calendarState.refreshToken })
+    });
+
+    const data = await response.json();
+
+    if (data.access_token) {
+      calendarState.accessToken = data.access_token;
+      calendarState.isLoggedIn = true;
+
+      // 新しいトークンを保存
+      const tokenData = {
+        accessToken: data.access_token,
+        refreshToken: calendarState.refreshToken,
+        expires: Date.now() + (data.expires_in || 3600) * 1000
+      };
+      localStorage.setItem('calendarTokens', JSON.stringify(tokenData));
+
+      updateLoginButton();
+      fetchCalendarEvents();
+      console.log('Token refreshed successfully');
+      return true;
+    } else {
+      console.error('Refresh failed:', data.error);
+      localStorage.removeItem('calendarTokens');
+      calendarState.isLoggedIn = false;
+      calendarState.refreshToken = null;
+      updateLoginButton();
+      return false;
+    }
+  } catch (e) {
+    console.error('Refresh error:', e);
+    return false;
   }
 }
 
 // ログインボタンクリック
 function handleLoginClick() {
-  const settings = getSettings();
-  if (!settings.clientId) {
-    alert('設定画面でGoogle OAuth Client IDを入力してください');
-    return;
-  }
-  
-  if (!tokenClient) {
-    initGoogleAuth();
-  }
-  
   if (calendarState.isLoggedIn) {
     // ログアウト
     calendarState.isLoggedIn = false;
     calendarState.accessToken = null;
+    calendarState.refreshToken = null;
     calendarState.events = [];
-    google.accounts.oauth2.revoke(calendarState.accessToken);
+    localStorage.removeItem('calendarTokens');
     updateLoginButton();
     renderCalendar();
     renderAgenda();
   } else {
-    // ログイン
-    if (tokenClient) {
-      tokenClient.requestAccessToken();
-    }
+    // ログイン - Workerにリダイレクト
+    window.location.href = `${OAUTH_WORKER_URL}/auth`;
   }
 }
 
@@ -682,10 +742,10 @@ function updateLoginButton() {
 // カレンダーイベント取得
 async function fetchCalendarEvents() {
   if (!calendarState.accessToken) return;
-  
+
   const startOfMonth = new Date(calendarState.currentDate.getFullYear(), calendarState.currentDate.getMonth(), 1);
   const endOfMonth = new Date(calendarState.currentDate.getFullYear(), calendarState.currentDate.getMonth() + 2, 0);
-  
+
   try {
     const response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
@@ -698,7 +758,7 @@ async function fetchCalendarEvents() {
         }
       }
     );
-    
+
     if (response.ok) {
       const data = await response.json();
       calendarState.events = data.items || [];
@@ -721,7 +781,7 @@ async function createCalendarEvent(title, date, startTime, endTime) {
     alert('先にGoogleにログインしてください');
     return false;
   }
-  
+
   let event;
   if (startTime && endTime) {
     // 時間指定あり
@@ -738,7 +798,7 @@ async function createCalendarEvent(title, date, startTime, endTime) {
       end: { date: date }
     };
   }
-  
+
   try {
     const response = await fetch(
       'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -751,7 +811,7 @@ async function createCalendarEvent(title, date, startTime, endTime) {
         body: JSON.stringify(event)
       }
     );
-    
+
     if (response.ok) {
       await fetchCalendarEvents();
       return true;
@@ -787,7 +847,7 @@ function updateCalendarTitle() {
     const weekStart = getWeekStart(calendarState.currentDate);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
-    calendarElements.calTitle.textContent = 
+    calendarElements.calTitle.textContent =
       `${weekStart.getMonth() + 1}/${weekStart.getDate()} - ${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
   }
 }
@@ -808,10 +868,10 @@ function renderMonthView() {
   const lastDay = new Date(year, month + 1, 0);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
-  
+
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  
+
   let html = '';
   for (let i = 0; i < 42; i++) {
     const date = new Date(startDate);
@@ -824,23 +884,23 @@ function renderMonthView() {
       const eventDate = e.start.date || e.start.dateTime?.split('T')[0];
       return eventDate === dateStr;
     });
-    
+
     let classes = 'day-cell';
     if (isOtherMonth) classes += ' other-month';
     if (isToday) classes += ' today';
     if (dayOfWeek === 0) classes += ' sun';
     if (dayOfWeek === 6) classes += ' sat';
     if (hasEvents) classes += ' has-events';
-    
+
     html += `
       <div class="${classes}" data-date="${dateStr}">
         <span class="day-number">${date.getDate()}</span>
       </div>
     `;
   }
-  
+
   calendarElements.monthGrid.innerHTML = html;
-  
+
   // 日付クリックで予定追加
   document.querySelectorAll('.day-cell').forEach(cell => {
     cell.addEventListener('click', () => {
@@ -855,7 +915,7 @@ function renderWeekView() {
   const days = ['日', '月', '火', '水', '木', '金', '土'];
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  
+
   let html = '';
   for (let i = 0; i < 7; i++) {
     const date = new Date(weekStart);
@@ -863,13 +923,13 @@ function renderWeekView() {
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const isToday = dateStr === todayStr;
     const dayOfWeek = date.getDay();
-    
+
     // この日のイベント取得
     const dayEvents = calendarState.events.filter(e => {
       const eventDate = e.start.date || e.start.dateTime?.split('T')[0];
       return eventDate === dateStr;
     });
-    
+
     // 天気取得
     let weatherHtml = '';
     if (calendarState.weeklyWeatherData && calendarState.weeklyWeatherData.daily) {
@@ -886,12 +946,12 @@ function renderWeekView() {
         `;
       }
     }
-    
+
     let classes = 'week-day-row';
     if (isToday) classes += ' today';
     if (dayOfWeek === 0) classes += ' sun';
     if (dayOfWeek === 6) classes += ' sat';
-    
+
     html += `
       <div class="${classes}" data-date="${dateStr}">
         <div class="week-day-info">
@@ -907,9 +967,9 @@ function renderWeekView() {
       </div>
     `;
   }
-  
+
   calendarElements.weekGrid.innerHTML = html;
-  
+
   // 日付クリックで予定追加
   document.querySelectorAll('.week-day-row').forEach(row => {
     row.addEventListener('click', () => {
@@ -924,7 +984,7 @@ function renderAgenda() {
     calendarElements.agendaList.innerHTML = '<div class="agenda-empty">ログインして予定を表示</div>';
     return;
   }
-  
+
   const days = ['日', '月', '火', '水', '木', '金', '土'];
   const upcomingEvents = calendarState.events
     .filter(e => {
@@ -932,18 +992,18 @@ function renderAgenda() {
       return eventDate >= new Date(new Date().setHours(0, 0, 0, 0));
     })
     .slice(0, 10);
-  
+
   if (upcomingEvents.length === 0) {
     calendarElements.agendaList.innerHTML = '<div class="agenda-empty">今後の予定はありません</div>';
     return;
   }
-  
+
   calendarElements.agendaList.innerHTML = upcomingEvents.map(e => {
     const startDate = new Date(e.start.date || e.start.dateTime);
-    const timeStr = e.start.dateTime 
+    const timeStr = e.start.dateTime
       ? new Date(e.start.dateTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
       : '終日';
-    
+
     return `
       <div class="agenda-item">
         <div class="agenda-date">
@@ -984,7 +1044,7 @@ async function saveEvent() {
   const date = calendarElements.eventDate.value;
   const startTime = calendarElements.eventStartTime.value;
   const endTime = calendarElements.eventEndTime.value;
-  
+
   if (!title) {
     alert('タイトルを入力してください');
     return;
@@ -993,7 +1053,7 @@ async function saveEvent() {
     alert('日付を選択してください');
     return;
   }
-  
+
   const success = await createCalendarEvent(title, date, startTime, endTime);
   if (success) {
     closeEventModalFn();
@@ -1018,7 +1078,7 @@ async function loadWeatherForCalendar() {
 function setupCalendarEventListeners() {
   // ログインボタン
   calendarElements.loginBtn.addEventListener('click', handleLoginClick);
-  
+
   // ビュー切替
   calendarElements.viewMonthBtn.addEventListener('click', () => {
     calendarState.view = 'month';
@@ -1028,7 +1088,7 @@ function setupCalendarEventListeners() {
     calendarElements.weekView.style.display = 'none';
     renderCalendar();
   });
-  
+
   calendarElements.viewWeekBtn.addEventListener('click', () => {
     calendarState.view = 'week';
     calendarElements.viewWeekBtn.classList.add('active');
@@ -1037,7 +1097,7 @@ function setupCalendarEventListeners() {
     calendarElements.monthView.style.display = 'none';
     renderCalendar();
   });
-  
+
   // ナビゲーション
   calendarElements.prevBtn.addEventListener('click', () => {
     if (calendarState.view === 'month') {
@@ -1048,7 +1108,7 @@ function setupCalendarEventListeners() {
     renderCalendar();
     if (calendarState.isLoggedIn) fetchCalendarEvents();
   });
-  
+
   calendarElements.nextBtn.addEventListener('click', () => {
     if (calendarState.view === 'month') {
       calendarState.currentDate.setMonth(calendarState.currentDate.getMonth() + 1);
@@ -1058,17 +1118,17 @@ function setupCalendarEventListeners() {
     renderCalendar();
     if (calendarState.isLoggedIn) fetchCalendarEvents();
   });
-  
+
   calendarElements.todayBtn.addEventListener('click', () => {
     calendarState.currentDate = new Date();
     renderCalendar();
     if (calendarState.isLoggedIn) fetchCalendarEvents();
   });
-  
+
   // 予定モーダル
   calendarElements.closeEventModal.addEventListener('click', closeEventModalFn);
   calendarElements.saveEventBtn.addEventListener('click', saveEvent);
-  
+
   // モーダル外クリックで閉じる
   calendarElements.eventModal.addEventListener('click', (e) => {
     if (e.target === calendarElements.eventModal) {
@@ -1079,7 +1139,7 @@ function setupCalendarEventListeners() {
 
 // 設定にClient IDを追加
 const originalGetSettings = getSettings;
-window.getSettings = function() {
+window.getSettings = function () {
   const defaultSettings = {
     bgUrl: "https://images.unsplash.com/photo-1496568816309-51d7c20e3b21?q=80&w=1631&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     lat: "35.6895",
