@@ -12,7 +12,8 @@ function weatherIcon(code) {
 }
 
 async function loadWeather() {
-    const settings = JSON.parse(localStorage.getItem("settings")) || { lat: "35.6895", lon: "139.6917" };
+    // getSettings()を使用（settings.jsで定義）
+    const settings = typeof getSettings === 'function' ? getSettings() : { lat: "35.6895", lon: "139.6917" };
     try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${settings.lat}&longitude=${settings.lon}&current=temperature_2m,weathercode&timezone=Asia%2FTokyo`);
         const d = await res.json();
@@ -25,7 +26,8 @@ loadWeather();
 
 // ---- 週間天気予報 ----
 async function loadWeeklyWeather() {
-    const settings = JSON.parse(localStorage.getItem("settings")) || { lat: "35.6895", lon: "139.6917" };
+    // getSettings()を使用（settings.jsで定義）
+    const settings = typeof getSettings === 'function' ? getSettings() : { lat: "35.6895", lon: "139.6917" };
     const container = document.getElementById("weekly-weather");
 
     // コンテナが存在しない場合はスキップ

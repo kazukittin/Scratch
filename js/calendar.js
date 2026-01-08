@@ -6,8 +6,9 @@
 // Cloudflare Worker URL
 // 配布時は空文字か、ユーザー自身のWorker URLを設定するように案内してください
 const DEFAULT_WORKER_URL = 'https://calendar-oauth.kazukittin.workers.dev';
-const savedSettings = JSON.parse(localStorage.getItem("settings") || "{}");
-const OAUTH_WORKER_URL = savedSettings.workerUrl || DEFAULT_WORKER_URL;
+
+// Worker URLの取得（IndexedDBからの読み込み後に更新）
+let OAUTH_WORKER_URL = DEFAULT_WORKER_URL;
 
 // カレンダー状態
 const calendarState = {
@@ -46,20 +47,28 @@ const calendarElements = {
 };
 
 // 初期化
-function initCalendar() {
+async function initCalendar() {
+    // Worker URLを更新
+    if (typeof getSettings === 'function') {
+        const settings = getSettings();
+        if (settings.workerUrl) {
+            OAUTH_WORKER_URL = settings.workerUrl;
+        }
+    }
+
     renderCalendar();
     setupCalendarEventListeners();
     loadWeatherForCalendar();
 
     // URLフラグメントからトークンを取得（OAuthコールバック後）
-    handleOAuthCallback();
+    await handleOAuthCallback();
 
     // 保存されたトークンを復元
-    restoreSavedToken();
+    await restoreSavedToken();
 }
 
 // OAuthコールバック処理（Worker経由でリダイレクトされた後）
-function handleOAuthCallback() {
+async function handleOAuthCallback() {
     const hash = window.location.hash;
     if (!hash || !hash.includes('access_token')) return;
 
@@ -73,13 +82,13 @@ function handleOAuthCallback() {
         calendarState.refreshToken = refreshToken;
         calendarState.isLoggedIn = true;
 
-        // トークンを保存
+        // トークンをIndexedDBに保存
         const tokenData = {
             accessToken,
             refreshToken,
             expires: Date.now() + expiresIn * 1000
         };
-        localStorage.setItem('calendarTokens', JSON.stringify(tokenData));
+        await StorageDB.set('calendarTokens', tokenData);
 
         updateLoginButton();
         fetchCalendarEvents();
@@ -89,16 +98,16 @@ function handleOAuthCallback() {
     }
 }
 
-// 保存されたトークンを復元
+// 保存されたトークンを復元（IndexedDBから）
 async function restoreSavedToken() {
-    const savedData = localStorage.getItem('calendarTokens');
-    if (!savedData) return;
-
     try {
-        const { accessToken, refreshToken, expires } = JSON.parse(savedData);
+        const savedData = await StorageDB.get('calendarTokens', null);
+        if (!savedData) return;
+
+        const { accessToken, refreshToken, expires } = savedData;
 
         if (!refreshToken) {
-            localStorage.removeItem('calendarTokens');
+            await StorageDB.remove('calendarTokens');
             return;
         }
 
@@ -116,7 +125,7 @@ async function restoreSavedToken() {
         }
     } catch (e) {
         console.error('Token restore error:', e);
-        localStorage.removeItem('calendarTokens');
+        await StorageDB.remove('calendarTokens');
     }
 }
 
@@ -137,13 +146,13 @@ async function refreshAccessToken() {
             calendarState.accessToken = data.access_token;
             calendarState.isLoggedIn = true;
 
-            // 新しいトークンを保存
+            // 新しいトークンをIndexedDBに保存
             const tokenData = {
                 accessToken: data.access_token,
                 refreshToken: calendarState.refreshToken,
                 expires: Date.now() + (data.expires_in || 3600) * 1000
             };
-            localStorage.setItem('calendarTokens', JSON.stringify(tokenData));
+            await StorageDB.set('calendarTokens', tokenData);
 
             updateLoginButton();
             fetchCalendarEvents();
@@ -151,7 +160,7 @@ async function refreshAccessToken() {
             return true;
         } else {
             console.error('Refresh failed:', data.error);
-            localStorage.removeItem('calendarTokens');
+            await StorageDB.remove('calendarTokens');
             calendarState.isLoggedIn = false;
             calendarState.refreshToken = null;
             updateLoginButton();
@@ -175,12 +184,12 @@ function handleLoginClick() {
 }
 
 // ログアウト（設定画面から呼び出し）
-function handleCalendarLogout() {
+async function handleCalendarLogout() {
     calendarState.isLoggedIn = false;
     calendarState.accessToken = null;
     calendarState.refreshToken = null;
     calendarState.events = [];
-    localStorage.removeItem('calendarTokens');
+    await StorageDB.remove('calendarTokens');
     updateLoginButton();
     renderCalendar();
     renderAgenda();
@@ -521,9 +530,9 @@ async function saveEvent() {
     }
 }
 
-// カレンダー用天気読み込み
 async function loadWeatherForCalendar() {
-    const settings = JSON.parse(localStorage.getItem("settings")) || { lat: "35.6895", lon: "139.6917" };
+    // getSettings()を使用（settings.jsで定義）
+    const settings = typeof getSettings === 'function' ? getSettings() : { lat: "35.6895", lon: "139.6917" };
     try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${settings.lat}&longitude=${settings.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo`);
         calendarState.weeklyWeatherData = await res.json();

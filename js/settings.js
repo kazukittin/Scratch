@@ -2,19 +2,42 @@
 // 設定管理
 // =====================================================
 
+// デフォルト設定
+const defaultSettings = {
+    bgUrl: "https://images.unsplash.com/photo-1496568816309-51d7c20e3b21?q=80&w=1631&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    lat: "35.6895",
+    lon: "139.6917",
+    clientId: ""
+};
+
+// キャッシュ: 非同期読み込み完了まで使用
+let settingsCache = { ...defaultSettings };
+let settingsLoaded = false;
+
+// 同期的にキャッシュから設定を取得（互換性のため）
 function getSettings() {
-    const defaultSettings = {
-        bgUrl: "https://images.unsplash.com/photo-1496568816309-51d7c20e3b21?q=80&w=1631&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-        lat: "35.6895",
-        lon: "139.6917",
-        clientId: ""
-    };
-    const saved = JSON.parse(localStorage.getItem("settings")) || {};
-    return { ...defaultSettings, ...saved };
+    return { ...defaultSettings, ...settingsCache };
 }
 
+// 設定保存（IndexedDBとキャッシュの両方に保存）
 function saveSettingsToStorage(settings) {
-    localStorage.setItem("settings", JSON.stringify(settings));
+    settingsCache = settings;
+    StorageDB.set("settings", settings).catch(err => {
+        console.error('Failed to save settings:', err);
+    });
+}
+
+// IndexedDBから設定を読み込み
+async function loadSettingsFromDB() {
+    try {
+        const data = await StorageDB.get("settings", {});
+        settingsCache = { ...defaultSettings, ...data };
+        settingsLoaded = true;
+        return settingsCache;
+    } catch (error) {
+        console.error('Failed to load settings from IndexedDB:', error);
+        return defaultSettings;
+    }
 }
 
 function applySettings() {
@@ -88,5 +111,19 @@ document.getElementById("save-settings").addEventListener("click", () => {
     modal.style.display = "none";
 });
 
-// Apply settings on load
-applySettings();
+// Apply settings on load (IndexedDBから非同期ロード)
+async function initSettings() {
+    await loadSettingsFromDB();
+    applySettings();
+}
+
+// StorageDBの準備ができたら初期化
+if (window.StorageDB) {
+    initSettings();
+} else {
+    // StorageDBがまだロードされていない場合は少し待つ
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initSettings, 50);
+    });
+}
+

@@ -2,9 +2,36 @@
 // ブックマーク & カテゴリ管理
 // =====================================================
 
-// ---- データ管理 ----
-function getData() { return JSON.parse(localStorage.getItem("categories") || "[]"); }
-function saveData(data) { localStorage.setItem("categories", JSON.stringify(data)); }
+// ---- データ管理 (IndexedDB使用) ----
+// キャッシュ: 非同期読み込み完了まで一時的に使用
+let categoriesCache = [];
+let categoriesLoaded = false;
+
+// 同期的にキャッシュからデータを取得（互換性のため）
+function getData() {
+    return categoriesCache;
+}
+
+// データ保存（IndexedDBとキャッシュの両方に保存）
+function saveData(data) {
+    categoriesCache = data;
+    StorageDB.set("categories", data).catch(err => {
+        console.error('Failed to save categories:', err);
+    });
+}
+
+// IndexedDBからデータを読み込み
+async function loadCategoriesFromDB() {
+    try {
+        const data = await StorageDB.get("categories", []);
+        categoriesCache = data;
+        categoriesLoaded = true;
+        return data;
+    } catch (error) {
+        console.error('Failed to load categories from IndexedDB:', error);
+        return [];
+    }
+}
 
 // ---- カテゴリ描画 ----
 let dragSrcEl = null;
@@ -188,10 +215,10 @@ function loadCategories() {
                 img.src = faviconUrl;
                 img.className = "favicon";
                 img.alt = "";
-                img.onerror = function() { this.style.display = 'none'; };
+                img.onerror = function () { this.style.display = 'none'; };
                 link.appendChild(img);
             }
-            
+
             link.appendChild(document.createTextNode(item.title));
             itemDiv.appendChild(link);
 
@@ -333,5 +360,19 @@ document.getElementById("import-file").addEventListener("change", (e) => {
     reader.readAsText(file);
 });
 
-// 初期表示
-loadCategories();
+// 初期表示（IndexedDBから非同期ロード）
+async function initBookmarks() {
+    await loadCategoriesFromDB();
+    loadCategories();
+}
+
+// StorageDBの準備ができたら初期化
+if (window.StorageDB) {
+    initBookmarks();
+} else {
+    // StorageDBがまだロードされていない場合は少し待つ
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initBookmarks, 50);
+    });
+}
+
