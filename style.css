@@ -1186,3 +1186,103 @@ button:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 25px rgba(0, 242, 254, 0.6);
 }
+
+/* Event Detail Modal Styles */
+.event-detail-content {
+  max-width: 420px;
+}
+
+.event-detail-body {
+  padding: 20px 0;
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-icon {
+  font-size: 1.3rem;
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: #e0e0e0;
+  line-height: 1.5;
+}
+
+.detail-description {
+  white-space: pre-wrap;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.event-detail-actions {
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: center;
+}
+
+.event-detail-actions .primary-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Clickable Agenda Items */
+.agenda-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  padding: 10px;
+  margin: -10px;
+  margin-bottom: 5px;
+}
+
+.agenda-item:hover {
+  background: rgba(0, 242, 254, 0.1);
+  transform: translateX(5px);
+}
+
+.agenda-item:active {
+  transform: translateX(2px);
+  background: rgba(0, 242, 254, 0.15);
+}
+
+/* Week view clickable events */
+.week-event-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.week-event-item:hover {
+  background: rgba(0, 242, 254, 0.2);
+}

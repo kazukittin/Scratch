@@ -212,6 +212,48 @@
     </div>
   </div>
 
+  <!-- 予定詳細モーダル -->
+  <div id="event-detail-modal" class="modal" style="display:none;">
+    <div class="modal-content event-detail-content">
+      <div class="modal-header">
+        <h2 id="detail-event-title">📅 予定の詳細</h2>
+        <span class="close-modal" id="close-event-detail">&times;</span>
+      </div>
+
+      <div class="event-detail-body">
+        <div class="detail-row">
+          <span class="detail-icon">📆</span>
+          <div class="detail-info">
+            <span class="detail-label">日時</span>
+            <span id="detail-event-datetime" class="detail-value"></span>
+          </div>
+        </div>
+
+        <div class="detail-row" id="detail-location-row" style="display:none;">
+          <span class="detail-icon">📍</span>
+          <div class="detail-info">
+            <span class="detail-label">場所</span>
+            <span id="detail-event-location" class="detail-value"></span>
+          </div>
+        </div>
+
+        <div class="detail-row" id="detail-description-row" style="display:none;">
+          <span class="detail-icon">📝</span>
+          <div class="detail-info">
+            <span class="detail-label">説明</span>
+            <div id="detail-event-description" class="detail-value detail-description"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-detail-actions">
+        <a id="detail-open-google" href="#" target="_blank" rel="noopener noreferrer" class="primary-btn">
+          Googleカレンダーで開く
+        </a>
+      </div>
+    </div>
+  </div>
+
   <!-- 分割されたJSファイル -->
   <script src="js/storage.js"></script><!-- IndexedDB永続ストレージ（最初に読み込み必須） -->
   <script src="js/clock.js"></script>

@@ -43,7 +43,17 @@ const calendarElements = {
     eventStartTime: document.getElementById('event-start-time'),
     eventEndTime: document.getElementById('event-end-time'),
     saveEventBtn: document.getElementById('save-event'),
-    clientIdInput: document.getElementById('client-id-input')
+    clientIdInput: document.getElementById('client-id-input'),
+    // 詳細モーダル要素
+    eventDetailModal: document.getElementById('event-detail-modal'),
+    closeEventDetail: document.getElementById('close-event-detail'),
+    detailEventTitle: document.getElementById('detail-event-title'),
+    detailEventDatetime: document.getElementById('detail-event-datetime'),
+    detailLocationRow: document.getElementById('detail-location-row'),
+    detailEventLocation: document.getElementById('detail-event-location'),
+    detailDescriptionRow: document.getElementById('detail-description-row'),
+    detailEventDescription: document.getElementById('detail-event-description'),
+    detailOpenGoogle: document.getElementById('detail-open-google')
 };
 
 // 初期化
@@ -468,14 +478,14 @@ function renderAgenda() {
         return;
     }
 
-    calendarElements.agendaList.innerHTML = upcomingEvents.map(e => {
+    calendarElements.agendaList.innerHTML = upcomingEvents.map((e, index) => {
         const startDate = new Date(e.start.date || e.start.dateTime);
         const timeStr = e.start.dateTime
             ? new Date(e.start.dateTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
             : '終日';
 
         return `
-      <div class="agenda-item">
+      <div class="agenda-item" data-event-index="${index}">
         <div class="agenda-date">
           <span class="month">${startDate.getMonth() + 1}月</span>
           <span class="day">${startDate.getDate()}</span>
@@ -488,6 +498,18 @@ function renderAgenda() {
       </div>
     `;
     }).join('');
+
+    // アジェンダアイテムにクリックイベントを追加
+    document.querySelectorAll('.agenda-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = parseInt(item.dataset.eventIndex);
+            const event = upcomingEvents[index];
+            if (event) {
+                showEventDetail(event);
+            }
+        });
+    });
 }
 
 // 予定追加モーダルを開く
@@ -506,6 +528,68 @@ function openEventModal(dateStr) {
 // モーダルを閉じる
 function closeEventModalFn() {
     calendarElements.eventModal.style.display = 'none';
+}
+
+// 予定詳細モーダルを表示
+function showEventDetail(event) {
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+
+    // タイトル
+    calendarElements.detailEventTitle.textContent = `📅 ${event.summary || '(タイトルなし)'}`;
+
+    // 日時の整形
+    const startDate = new Date(event.start.date || event.start.dateTime);
+    const endDate = event.end ? new Date(event.end.date || event.end.dateTime) : null;
+
+    let datetimeStr = '';
+    const dateStr = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月${startDate.getDate()}日(${days[startDate.getDay()]})`;
+
+    if (event.start.dateTime) {
+        // 時刻指定あり
+        const startTimeStr = startDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        if (endDate && event.end.dateTime) {
+            const endTimeStr = endDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            datetimeStr = `${dateStr} ${startTimeStr} ～ ${endTimeStr}`;
+        } else {
+            datetimeStr = `${dateStr} ${startTimeStr}`;
+        }
+    } else {
+        // 終日
+        datetimeStr = `${dateStr} 終日`;
+    }
+    calendarElements.detailEventDatetime.textContent = datetimeStr;
+
+    // 場所
+    if (event.location) {
+        calendarElements.detailLocationRow.style.display = 'flex';
+        calendarElements.detailEventLocation.textContent = event.location;
+    } else {
+        calendarElements.detailLocationRow.style.display = 'none';
+    }
+
+    // 説明
+    if (event.description) {
+        calendarElements.detailDescriptionRow.style.display = 'flex';
+        calendarElements.detailEventDescription.textContent = event.description;
+    } else {
+        calendarElements.detailDescriptionRow.style.display = 'none';
+    }
+
+    // Googleカレンダーで開くリンク
+    if (event.htmlLink) {
+        calendarElements.detailOpenGoogle.href = event.htmlLink;
+        calendarElements.detailOpenGoogle.style.display = 'inline-flex';
+    } else {
+        calendarElements.detailOpenGoogle.style.display = 'none';
+    }
+
+    // モーダルを表示
+    calendarElements.eventDetailModal.style.display = 'flex';
+}
+
+// 詳細モーダルを閉じる
+function closeEventDetailFn() {
+    calendarElements.eventDetailModal.style.display = 'none';
 }
 
 // 予定保存
@@ -610,6 +694,18 @@ function setupCalendarEventListeners() {
             closeEventModalFn();
         }
     });
+
+    // 詳細モーダル
+    if (calendarElements.closeEventDetail) {
+        calendarElements.closeEventDetail.addEventListener('click', closeEventDetailFn);
+    }
+    if (calendarElements.eventDetailModal) {
+        calendarElements.eventDetailModal.addEventListener('click', (e) => {
+            if (e.target === calendarElements.eventDetailModal) {
+                closeEventDetailFn();
+            }
+        });
+    }
 }
 
 // カレンダー初期化
