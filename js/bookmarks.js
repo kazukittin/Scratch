@@ -37,7 +37,9 @@ async function loadCategoriesFromDB() {
 let dragSrcEl = null;
 let dragType = null; // 'category' or 'item'
 let dragSrcIndex = null;
+
 let dragSrcParentIndex = null;
+let editState = { catIndex: null, itemIndex: null };
 
 function handleDragStart(e) {
     dragSrcEl = this;
@@ -213,14 +215,14 @@ function loadCategories() {
             // ファビコンまたはデフォルトアイコンを追加
             const iconSpan = document.createElement("span");
             iconSpan.className = "favicon-wrapper";
-            
+
             if (faviconUrl) {
                 const img = document.createElement("img");
                 img.src = faviconUrl;
                 img.className = "favicon";
                 img.alt = "";
                 // 読み込み失敗時はデフォルトアイコンを表示
-                img.onerror = function () { 
+                img.onerror = function () {
                     this.style.display = 'none';
                     iconSpan.innerHTML = '<span class="default-icon">🔗</span>';
                 };
@@ -238,14 +240,10 @@ function loadCategories() {
             itemEditBtn.textContent = "✏️";
             itemEditBtn.onclick = (e) => {
                 e.stopPropagation();
-                const newTitle = prompt("タイトルを編集", item.title);
-                const newUrl = prompt("URLを編集", item.url);
-                if (newTitle && newUrl) {
-                    item.title = newTitle;
-                    item.url = newUrl;
-                    saveData(categories);
-                    loadCategories();
-                }
+                editState = { catIndex, itemIndex };
+                document.getElementById('edit-bookmark-title').value = item.title;
+                document.getElementById('edit-bookmark-url').value = item.url;
+                document.getElementById('bookmark-edit-modal').style.display = 'flex';
             };
 
             const itemDeleteBtn = document.createElement("button");
@@ -369,6 +367,30 @@ document.getElementById("import-file").addEventListener("change", (e) => {
         }
     };
     reader.readAsText(file);
+});
+
+// ---- ブックマーク編集モーダル ----
+document.getElementById("close-bookmark-edit").addEventListener("click", () => {
+    document.getElementById("bookmark-edit-modal").style.display = "none";
+    editState = { catIndex: null, itemIndex: null };
+});
+
+document.getElementById("save-bookmark-edit").addEventListener("click", () => {
+    const title = document.getElementById("edit-bookmark-title").value.trim();
+    const url = document.getElementById("edit-bookmark-url").value.trim();
+
+    if (editState.catIndex !== null && editState.itemIndex !== null && title && url) {
+        const categories = getData();
+        // インデックスの有効性チェック
+        if (categories[editState.catIndex] && categories[editState.catIndex].items[editState.itemIndex]) {
+            categories[editState.catIndex].items[editState.itemIndex].title = title;
+            categories[editState.catIndex].items[editState.itemIndex].url = url;
+            saveData(categories);
+            loadCategories();
+        }
+    }
+    document.getElementById("bookmark-edit-modal").style.display = "none";
+    editState = { catIndex: null, itemIndex: null };
 });
 
 // 初期表示（IndexedDBから非同期ロード）

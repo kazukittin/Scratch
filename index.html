@@ -254,6 +254,30 @@
     </div>
   </div>
 
+  <!-- ブックマーク編集モーダル -->
+  <div id="bookmark-edit-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>✏️ ブックマークを編集</h2>
+        <span class="close-modal" id="close-bookmark-edit">&times;</span>
+      </div>
+
+      <div class="setting-item">
+        <label>タイトル</label>
+        <input type="text" id="edit-bookmark-title" placeholder="タイトル">
+      </div>
+
+      <div class="setting-item">
+        <label>URL</label>
+        <input type="text" id="edit-bookmark-url" placeholder="https://...">
+      </div>
+
+      <div class="setting-item">
+        <button id="save-bookmark-edit" class="primary-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 分割されたJSファイル -->
   <script src="js/storage.js"></script><!-- IndexedDB永続ストレージ（最初に読み込み必須） -->
   <script src="js/clock.js"></script>
