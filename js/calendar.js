@@ -43,6 +43,8 @@ const calendarElements = {
     eventStartTime: document.getElementById('event-start-time'),
     eventEndTime: document.getElementById('event-end-time'),
     saveEventBtn: document.getElementById('save-event'),
+    addDayShiftBtn: document.getElementById('add-day-shift'),
+    addNightShiftBtn: document.getElementById('add-night-shift'),
     clientIdInput: document.getElementById('client-id-input'),
     // 詳細モーダル要素
     eventDetailModal: document.getElementById('event-detail-modal'),
@@ -592,6 +594,22 @@ function closeEventDetailFn() {
     calendarElements.eventDetailModal.style.display = 'none';
 }
 
+// クイック予定作成
+async function createQuickEvent(title) {
+    const date = calendarElements.eventDate.value;
+    if (!date) {
+        alert('日付を選択してください');
+        return;
+    }
+    
+    // 時間指定なし（終日）で作成
+    // ユーザーからの要望によりワンクリックで追加
+    const success = await createCalendarEvent(title, date, '', '');
+    if (success) {
+        closeEventModalFn();
+    }
+}
+
 // 予定保存
 async function saveEvent() {
     const title = calendarElements.eventTitle.value.trim();
@@ -687,6 +705,14 @@ function setupCalendarEventListeners() {
     // 予定モーダル
     calendarElements.closeEventModal.addEventListener('click', closeEventModalFn);
     calendarElements.saveEventBtn.addEventListener('click', saveEvent);
+
+    // クイック追加ボタン
+    if (calendarElements.addDayShiftBtn) {
+        calendarElements.addDayShiftBtn.addEventListener('click', () => createQuickEvent('日勤'));
+    }
+    if (calendarElements.addNightShiftBtn) {
+        calendarElements.addNightShiftBtn.addEventListener('click', () => createQuickEvent('夜勤'));
+    }
 
     // モーダル外クリックで閉じる
     calendarElements.eventModal.addEventListener('click', (e) => {
