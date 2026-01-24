@@ -601,6 +601,7 @@ function closeEventDetailFn() {
 
 // クイック予定作成
 async function createQuickEvent(type) {
+    console.log('Quick event clicked:', type); // Debug log
     const dateStr = calendarElements.eventDate.value;
     if (!dateStr) {
         alert('日付を選択してください');
@@ -734,12 +735,28 @@ function setupCalendarEventListeners() {
     calendarElements.closeEventModal.addEventListener('click', closeEventModalFn);
     calendarElements.saveEventBtn.addEventListener('click', saveEvent);
 
-    // クイック追加ボタン
-    if (calendarElements.addDayShiftBtn) {
-        calendarElements.addDayShiftBtn.addEventListener('click', () => createQuickEvent('日勤'));
+    // クイック追加ボタン (直接取得して設定)
+    const dayBtn = document.getElementById('add-day-shift');
+    const nightBtn = document.getElementById('add-night-shift');
+
+    if (dayBtn) {
+        console.log('Day shift button found, adding listener');
+        dayBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // 念のためフォーム送信を防ぐ
+            createQuickEvent('日勤');
+        });
+    } else {
+        console.error('Day shift button NOT found');
     }
-    if (calendarElements.addNightShiftBtn) {
-        calendarElements.addNightShiftBtn.addEventListener('click', () => createQuickEvent('夜勤'));
+
+    if (nightBtn) {
+        console.log('Night shift button found, adding listener');
+        nightBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            createQuickEvent('夜勤');
+        });
+    } else {
+        console.error('Night shift button NOT found');
     }
 
     // モーダル外クリックで閉じる
