@@ -383,8 +383,9 @@ function renderMonthView() {
             // 日勤(6:Tangerine) -> Orange
             // 夜勤(3:Grape) -> Purple
             // 夜勤を優先（または両方あればドットを工夫するが今回は簡易的に）
-            const hasPurple = dateEvents.some(e => e.colorId === '3');
-            const hasOrange = dateEvents.some(e => e.colorId === '6');
+            // フォールバック: タイトルで判定
+            const hasPurple = dateEvents.some(e => e.colorId === '3' || e.summary === '夜勤');
+            const hasOrange = dateEvents.some(e => e.colorId === '6' || e.summary === '日勤');
 
             if (hasPurple) {
                 classes += ' marker-purple';
@@ -463,9 +464,12 @@ function renderWeekView() {
         <div class="week-events">
           ${dayEvents.map(e => {
             let style = '';
-            if (e.colorId === '6') { // Orange
+            const isDayShift = e.colorId === '6' || e.summary === '日勤';
+            const isNightShift = e.colorId === '3' || e.summary === '夜勤';
+
+            if (isDayShift) { // Orange
                 style = 'background: rgba(244, 81, 30, 0.2); color: #f4511e; border-left: 2px solid #f4511e;';
-            } else if (e.colorId === '3') { // Purple
+            } else if (isNightShift) { // Purple
                 style = 'background: rgba(142, 36, 170, 0.2); color: #ce93d8; border-left: 2px solid #ab47bc;';
             }
             return `<div class="week-event-item" style="${style}">${e.summary || '(タイトルなし)'}</div>`;
