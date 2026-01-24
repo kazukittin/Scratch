@@ -367,17 +367,31 @@ function renderMonthView() {
         const isOtherMonth = date.getMonth() !== month;
         const isToday = dateStr === todayStr;
         const dayOfWeek = date.getDay();
-        const hasEvents = calendarState.events.some(e => {
+        const dateEvents = calendarState.events.filter(e => {
             const eventDate = e.start.date || e.start.dateTime?.split('T')[0];
             return eventDate === dateStr;
         });
+        const hasEvents = dateEvents.length > 0;
 
         let classes = 'day-cell';
         if (isOtherMonth) classes += ' other-month';
         if (isToday) classes += ' today';
         if (dayOfWeek === 0) classes += ' sun';
         if (dayOfWeek === 6) classes += ' sat';
-        if (hasEvents) classes += ' has-events';
+        if (hasEvents) {
+            classes += ' has-events';
+            // 日勤(6:Tangerine) -> Orange
+            // 夜勤(3:Grape) -> Purple
+            // 夜勤を優先（または両方あればドットを工夫するが今回は簡易的に）
+            const hasPurple = dateEvents.some(e => e.colorId === '3');
+            const hasOrange = dateEvents.some(e => e.colorId === '6');
+
+            if (hasPurple) {
+                classes += ' marker-purple';
+            } else if (hasOrange) {
+                classes += ' marker-orange';
+            }
+        }
 
         html += `
       <div class="${classes}" data-date="${dateStr}">
@@ -447,9 +461,15 @@ function renderWeekView() {
           ${weatherHtml}
         </div>
         <div class="week-events">
-          ${dayEvents.map(e => `
-            <div class="week-event-item">${e.summary || '(タイトルなし)'}</div>
-          `).join('')}
+          ${dayEvents.map(e => {
+            let style = '';
+            if (e.colorId === '6') { // Orange
+                style = 'background: rgba(244, 81, 30, 0.2); color: #f4511e; border-left: 2px solid #f4511e;';
+            } else if (e.colorId === '3') { // Purple
+                style = 'background: rgba(142, 36, 170, 0.2); color: #ce93d8; border-left: 2px solid #ab47bc;';
+            }
+            return `<div class="week-event-item" style="${style}">${e.summary || '(タイトルなし)'}</div>`;
+        }).join('')}
         </div>
       </div>
     `;

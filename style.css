@@ -978,6 +978,16 @@ button:hover {
   box-shadow: 0 0 5px #00f2fe;
 }
 
+.day-cell.marker-orange::after {
+  background: #f4511e !important;
+  box-shadow: 0 0 5px #f4511e !important;
+}
+
+.day-cell.marker-purple::after {
+  background: #8e24aa !important;
+  box-shadow: 0 0 5px #8e24aa !important;
+}
+
 /* 週グリッド */
 .week-grid {
   display: flex;
