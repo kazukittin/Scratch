@@ -258,7 +258,7 @@ async function fetchCalendarEvents() {
 }
 
 // イベント作成
-async function createCalendarEvent(title, date, startTime, endTime, endDate = null) {
+async function createCalendarEvent(title, date, startTime, endTime, endDate = null, colorId = null) {
     if (!calendarState.accessToken) {
         alert('先にGoogleにログインしてください');
         return false;
@@ -279,6 +279,11 @@ async function createCalendarEvent(title, date, startTime, endTime, endDate = nu
             start: { date: date },
             end: { date: date }
         };
+    }
+
+    // 色指定があれば追加 (Google Calendar API colorId: 1-11)
+    if (colorId) {
+        event.colorId = colorId;
     }
 
     try {
@@ -603,12 +608,14 @@ async function createQuickEvent(type) {
     }
 
     let title = type;
-    let startTime, endTime, endDateStr;
+    let startTime, endTime, endDateStr, colorId;
 
     if (type === '日勤') {
         startTime = '08:30';
         endTime = '17:15';
         endDateStr = dateStr;
+        // 日勤はオレンジ (Tangerine: 6)
+        colorId = '6';
     } else if (type === '夜勤') {
         startTime = '08:30';
         endTime = '08:30';
@@ -616,6 +623,8 @@ async function createQuickEvent(type) {
         const d = new Date(dateStr);
         d.setUTCDate(d.getUTCDate() + 1);
         endDateStr = d.toISOString().split('T')[0];
+        // 夜勤は紫 (Grape: 3)
+        colorId = '3';
     } else {
         // その他（現時点では想定なしだが、念のため終日扱い）
         const success = await createCalendarEvent(title, dateStr, '', '');
@@ -623,7 +632,7 @@ async function createQuickEvent(type) {
         return;
     }
 
-    const success = await createCalendarEvent(title, dateStr, startTime, endTime, endDateStr);
+    const success = await createCalendarEvent(title, dateStr, startTime, endTime, endDateStr, colorId);
     if (success) {
         closeEventModalFn();
     }
